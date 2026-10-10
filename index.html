@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Indra Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e1f; --ink:#eaedff; --mute:#8f96bf; --glass:rgba(255,255,255,.055);
+  --line:rgba(255,255,255,.11); --rose:#ff6b8b; --cyan:#5ee7df; --violet:#8b7bff;
+  --r:22px; --display:'Sora',system-ui,sans-serif; --body:'Manrope',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html{color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.55 var(--body);height:100vh;height:100dvh;overflow:hidden}
+.aurora{position:fixed;inset:0;z-index:-1;overflow:hidden}
+.aurora i{position:absolute;width:55vmax;height:55vmax;border-radius:50%;filter:blur(90px);opacity:.38;animation:drift 26s ease-in-out infinite alternate}
+.aurora i:nth-child(1){background:var(--violet);top:-25vmax;left:-15vmax}
+.aurora i:nth-child(2){background:var(--cyan);bottom:-30vmax;right:-20vmax;animation-duration:32s;opacity:.26}
+.aurora i:nth-child(3){background:var(--rose);top:30%;left:45%;width:30vmax;height:30vmax;animation-duration:38s;opacity:.18}
+@keyframes drift{to{transform:translate(8vmax,6vmax) scale(1.15)}}
+.wrap{max-width:1280px;height:100%;margin:0 auto;padding:clamp(12px,2vw,26px);display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:14px}
+h1{font:700 clamp(22px,3.2vw,34px)/1.1 var(--display);letter-spacing:-.02em}
+.sub{color:var(--mute);margin-top:6px}
+.clocks{display:flex;gap:12px}
+.clock{padding:7px 14px;border:1px solid var(--line);border-radius:14px;background:var(--glass);backdrop-filter:blur(14px);min-width:132px}
+.clock b{display:block;font:500 19px var(--display);font-variant-numeric:tabular-nums}
+.clock span{font-size:12px;color:var(--mute)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);grid-template-rows:auto minmax(0,1fr);gap:14px;flex:1;min-height:0}
+.panel{background:var(--glass);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;backdrop-filter:blur(18px);display:flex;flex-direction:column;min-height:0;overflow:auto;scrollbar-width:none;animation:rise .8s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i)*110ms)}
+@keyframes rise{from{opacity:0;transform:translateY(26px) scale(.98)}}
+h2{font:500 16px var(--display);margin-bottom:12px;flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px}
+h2 small{font:400 12px var(--body);color:var(--mute)}
+/* links */
+@property --ang{syntax:'<angle>';initial-value:0deg;inherits:false}
+.links{position:relative}
+.links::after{content:'';position:absolute;inset:0;border-radius:var(--r);padding:1.5px;pointer-events:none;background:conic-gradient(from var(--ang),transparent 0 62%,var(--cyan),var(--violet),var(--rose),transparent);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:ang 6s linear infinite}
+@keyframes ang{to{--ang:360deg}}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));grid-auto-rows:minmax(96px,128px);gap:16px;padding:6px 4px 10px}
+.cell{position:relative;min-width:0}
+@keyframes fly{from{opacity:0;transform:perspective(800px) translateY(46px) rotateX(-24deg) scale(.9)}}
+.card{--rx:0deg;--ry:0deg;--mx:50%;--my:50%;--px:0px;--py:0px;--ty:0px;--s:1;position:relative;display:flex;align-items:center;gap:16px;height:100%;padding:0 20px;border-radius:22px;overflow:hidden;text-decoration:none;color:#fff;
+  border:1px solid hsla(var(--h),100%,88%,.38);
+  background:radial-gradient(240px circle at var(--mx) var(--my),rgba(255,255,255,.34),transparent 62%),linear-gradient(158deg,hsla(var(--h),88%,64%,.62),hsla(var(--h),80%,40%,.42) 52%,hsla(var(--h),72%,20%,.62));
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.55),inset 0 -4px 8px rgba(0,0,0,.35),0 22px 34px -14px hsla(var(--h),95%,55%,.65),0 6px 10px rgba(0,0,0,.35);
+  transform:perspective(900px) translateY(var(--ty)) rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--s));
+  transition:transform .16s ease-out,box-shadow .25s,border-color .25s}
+.card:hover,.card:focus-visible{--ty:-5px;--s:1.025;outline:none;border-color:hsla(var(--h),100%,92%,.7);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.7),inset 0 -4px 8px rgba(0,0,0,.3),0 30px 44px -14px hsla(var(--h),100%,60%,.85),0 10px 16px rgba(0,0,0,.35)}
+.card:active{--ty:3px;--s:.975;box-shadow:inset 0 3px 10px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.3),0 6px 12px -6px hsla(var(--h),95%,55%,.6)}
+.card::before{content:'';position:absolute;top:-30%;bottom:-30%;left:-60%;width:36%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-20deg);animation:sheen 7s ease-in-out var(--d,0s) infinite;pointer-events:none}
+.card:hover::before{animation:sheen .8s ease-out 1}
+@keyframes sheen{0%,72%{left:-60%}100%{left:140%}}
+.card::after{content:'';position:absolute;inset:0 0 54% 0;border-radius:22px 22px 50% 50%/22px 22px 18px 18px;background:linear-gradient(rgba(255,255,255,.2),rgba(255,255,255,.02));pointer-events:none}
+.ico{flex:none;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font:700 22px var(--display);text-shadow:0 1px 2px rgba(0,0,0,.55);position:relative;z-index:1;
+  background:radial-gradient(circle at 32% 24%,#fff 0 6%,hsl(var(--h),92%,76%) 22%,hsl(var(--h),86%,48%) 60%,hsl(var(--h),90%,22%) 100%);
+  box-shadow:inset 0 -7px 12px rgba(0,0,0,.4),inset 0 3px 6px rgba(255,255,255,.55),0 10px 16px rgba(0,0,0,.45);
+  transform:translate(var(--px),var(--py));transition:transform .2s ease-out}
+.txt{min-width:0;position:relative;z-index:1}
+.txt strong{display:block;font:600 19px/1.2 var(--display);text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.txt em{display:block;font-style:normal;font-size:12px;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.arr{margin-left:auto;flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;position:relative;z-index:1;background:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.45);transition:transform .3s cubic-bezier(.34,1.56,.64,1),background .2s}
+.card:hover .arr,.card:focus-visible .arr{transform:translate(3px,-3px) scale(1.1);background:rgba(255,255,255,.3)}
+.rip{position:absolute;border-radius:50%;pointer-events:none;z-index:2;background:radial-gradient(circle,rgba(255,255,255,.6),transparent 65%);animation:rip .7s ease-out forwards}
+@keyframes rip{from{transform:scale(0);opacity:.9}to{transform:scale(1);opacity:0}}
+.cell .rm{position:absolute;top:8px;right:8px;z-index:3;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.4);color:#fff;cursor:pointer;opacity:0;transition:opacity .2s,background .2s;font-size:15px;line-height:1}
+.cell:hover .rm,.cell .rm:focus-visible{opacity:1}.cell .rm:hover{background:var(--rose)}
+@media(hover:none){.cell .rm{opacity:.75}}
+.add{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:14px}
+input{flex:1 1 140px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);padding:9px 12px;border-radius:12px;font:inherit;min-width:0}
+input:focus{outline:2px solid var(--violet);outline-offset:1px}
+button.pill{background:linear-gradient(135deg,var(--violet),var(--rose));border:0;color:#fff;padding:10px 20px;border-radius:12px;font:700 14px var(--body);cursor:pointer;transition:transform .15s}
+button.pill:active{transform:scale(.95)}
+button.ghost{background:none;border:1px solid var(--line);color:var(--mute);padding:10px 14px;border-radius:12px;font:inherit;cursor:pointer}
+.msg{font-size:12.5px;color:var(--rose);margin-top:6px;flex:none}.msg:empty{display:none}
+/* weather */
+.now{display:flex;align-items:center;gap:18px}
+.now svg{width:72px;height:72px;flex:none}
+.temp{font:300 50px/1 var(--display);letter-spacing:-.04em}
+.temp sup{font-size:24px;vertical-align:top;color:var(--mute)}
+.cond{color:var(--mute);margin-top:4px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.stats div{padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.04);font-size:12px;color:var(--mute)}
+.stats b{display:block;font:500 16px var(--display);color:var(--ink)}
+.days{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center;font-size:12px;color:var(--mute)}
+.days svg{width:30px;height:30px;display:block;margin:4px auto}
+.days b{color:var(--ink);font-weight:500}
+.skel{color:var(--mute);padding:20px 0}
+/* weather icon animation */
+.rays{transform-origin:32px 32px;animation:spin 18s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cl{animation:bob 5s ease-in-out infinite alternate}
+@keyframes bob{to{transform:translateY(-2.5px)}}
+.dr{stroke-dasharray:4 6;animation:fall 1s linear infinite}
+@keyframes fall{to{stroke-dashoffset:-20}}
+.bolt{animation:flash 3s infinite}
+@keyframes flash{0%,88%,100%{opacity:1}92%{opacity:.2}}
+/* calendar */
+.nav{display:flex;gap:6px;align-items:center}
+.nav button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:none;color:var(--ink);cursor:pointer;font-size:16px}
+.nav button:hover{border-color:var(--cyan)}
+.dow,.days-g{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.days-g{flex:1;min-height:0;grid-auto-rows:minmax(0,1fr)}
+.dow{font-size:12px;color:var(--mute);text-align:center;margin-bottom:5px}
+.d{border-radius:10px;padding:4px 7px;min-height:0;overflow:hidden;font-size:13px;position:relative;background:rgba(255,255,255,.03);display:flex;flex-direction:column;justify-content:space-between;animation:pop .35s both;animation-delay:calc(var(--k)*8ms)}
+@keyframes pop{from{opacity:0;transform:scale(.85)}}
+.d.out{opacity:.25}
+.d.h{background:linear-gradient(145deg,rgba(255,107,139,.42),rgba(255,107,139,.14));border:1px solid rgba(255,107,139,.55)}
+.d.h.est{background:repeating-linear-gradient(135deg,rgba(255,107,139,.28) 0 6px,rgba(255,107,139,.08) 6px 12px);border:1px dashed rgba(255,107,139,.6)}
+.d.t{box-shadow:0 0 0 2px var(--cyan)}
+.d small{font-size:10px;line-height:1.15;color:#ffd5df;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--mute);margin-top:10px;flex-wrap:wrap;flex:none}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:6px;vertical-align:-1px;background:rgba(255,107,139,.5)}
+.legend i.e{background:repeating-linear-gradient(135deg,rgba(255,107,139,.6) 0 3px,transparent 3px 6px);border:1px dashed var(--rose)}
+.legend i.t{background:none;box-shadow:0 0 0 2px var(--cyan)}
+/* next */
+.big{font:700 clamp(44px,9vh,72px)/1 var(--display);letter-spacing:-.04em;background:linear-gradient(135deg,var(--rose),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+.nm{font:500 20px var(--display);margin-top:8px}.nm span{color:var(--mute);font-weight:300}
+.note{color:var(--mute);font-size:12.5px;margin:8px 0 14px}
+.up{list-style:none;padding:0;display:grid;gap:8px}
+.up li{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,.04);font-size:13px}
+.up li span{color:var(--mute);white-space:nowrap}
+.up em{font-style:normal;color:var(--rose);font-size:11px;margin-left:6px}
+footer{margin-top:10px;color:var(--mute);font-size:11px;text-align:center;flex:none}
+.tabs{display:none;flex:none;gap:6px;margin-top:10px;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));border:1px solid var(--line);border-radius:18px;background:var(--glass);backdrop-filter:blur(18px)}
+.tabs button{flex:1;background:none;border:0;color:var(--mute);font:500 13px var(--body);padding:10px 4px;border-radius:12px;cursor:pointer;transition:background .2s,color .2s}
+.tabs button.on{color:#fff;background:linear-gradient(135deg,rgba(139,123,255,.55),rgba(255,107,139,.45))}
+@media(max-width:900px){
+  .grid{display:block;grid-template-rows:none}
+  .panel{display:none;height:100%;animation-delay:0s}
+  .panel.on{display:flex}
+  .tabs{display:flex}
+  footer,.sub{display:none}
+  header{flex-wrap:nowrap;align-items:center;margin-bottom:10px}
+  .clocks{gap:8px}.clock{min-width:0;padding:6px 10px}.clock b{font-size:15px}
+  .cards{grid-template-columns:1fr;grid-auto-rows:minmax(76px,92px);gap:12px}.ico{width:46px;height:46px;font-size:18px}.txt strong{font-size:17px}
+  .temp{font-size:56px}.now svg{width:84px;height:84px}
+  .big{font-size:clamp(56px,14vw,84px)}
+}
+@media(min-width:901px){
+  .links{grid-column:span 12}.weather,.cal,.next{grid-column:span 4}
+}
+@media(min-width:901px) and (max-height:800px){
+  .days,.up{display:none}.note{margin-bottom:0}.stats{margin:8px 0}.cards{grid-auto-rows:88px}
+}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="wrap">
+  <header style="animation:rise .8s both">
+    <div><h1>Indra Dashboard</h1><p class="sub" id="greet"></p></div>
+    <div class="clocks">
+      <div class="clock"><b id="tK">--:--:--</b><span>Kandy</span></div>
+      <div class="clock"><b id="tB">--:--:--</b><span>Beijing</span></div>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="panel links on" style="--i:1" aria-labelledby="hl">
+      <h2 id="hl">Launchpad <small id="lc"></small></h2>
+      <div class="cards" id="cards"></div>
+      <form class="add" id="addf" autocomplete="off">
+        <input id="nm" placeholder="Name" aria-label="Link name" maxlength="30">
+        <input id="ur" placeholder="https://..." aria-label="Link address" inputmode="url">
+        <button class="pill" type="submit">Add link</button>
+        <button class="ghost" type="button" id="reset">Restore defaults</button>
+      </form>
+      <p class="msg" id="msg" role="status"></p>
+    </section>
+
+    <section class="panel weather" style="--i:2" aria-labelledby="hw">
+      <h2 id="hw">Weather in Kandy <small id="wu"></small></h2>
+      <div id="wx"><p class="skel">Loading forecast...</p></div>
+    </section>
+
+    <section class="panel cal" style="--i:3" aria-labelledby="hc">
+      <h2 id="hc">China public holidays
+        <span class="nav"><button id="pv" aria-label="Previous month">&lsaquo;</button><b id="mt" style="min-width:130px;text-align:center;font-weight:500"></b><button id="nx" aria-label="Next month">&rsaquo;</button></span>
+      </h2>
+      <div class="dow" id="dow"></div>
+      <div class="days-g" id="cg"></div>
+      <div class="legend"><span><i></i>Official holiday</span><span><i class="e"></i>Expected, not yet announced</span><span><i class="t"></i>Today</span></div>
+    </section>
+
+    <section class="panel next" style="--i:4" aria-labelledby="hn">
+      <h2 id="hn">Next China holiday</h2>
+      <div id="nextbox"></div>
+    </section>
+  </main>
+  <footer>Weather by Open-Meteo. Holiday dates follow the State Council schedule; update the HOLIDAYS list in this file when new dates are announced.</footer>
+  <nav class="tabs" id="tabs" aria-label="Dashboard sections">
+    <button class="on" data-t="links" type="button">Links</button>
+    <button data-t="weather" type="button">Weather</button>
+    <button data-t="cal" type="button">Calendar</button>
+    <button data-t="next" type="button">Next holiday</button>
+  </nav>
+</div>
+
+<script>
+/* ---------- Data you can edit ---------- */
+const DEFAULT_LINKS=[
+  {n:'LC UI5',u:'https://sethil-bit.github.io/lc-ui5/'},
+  {n:'Shipments',u:'https://sethil-bit.github.io/shipments/'},
+  {n:'Keeply',u:'https://sethil-bit.github.io/keeply/'},
+  {n:'Google Drive',u:'https://drive.google.com/drive/folders/16GIQBMXNLdLob8kWlewXY0zBpjsiTJhP'}
+];
+// est:true = expected pattern, not yet officially announced
+const HOLIDAYS=[
+  {n:"New Year's Day",cn:'元旦',s:'2026-01-01',e:'2026-01-03'},
+  {n:'Spring Festival',cn:'春节',s:'2026-02-15',e:'2026-02-23'},
+  {n:'Qingming Festival',cn:'清明节',s:'2026-04-04',e:'2026-04-06'},
+  {n:'Labour Day',cn:'劳动节',s:'2026-05-01',e:'2026-05-05'},
+  {n:'Dragon Boat Festival',cn:'端午节',s:'2026-06-19',e:'2026-06-21'},
+  {n:'Mid-Autumn Festival',cn:'中秋节',s:'2026-09-25',e:'2026-09-27'},
+  {n:'National Day',cn:'国庆节',s:'2026-10-01',e:'2026-10-07'},
+  {n:"New Year's Day",cn:'元旦',s:'2027-01-01',e:'2027-01-03',est:1},
+  {n:'Spring Festival',cn:'春节',s:'2027-02-05',e:'2027-02-11',est:1},
+  {n:'Qingming Festival',cn:'清明节',s:'2027-04-03',e:'2027-04-05',est:1},
+  {n:'Labour Day',cn:'劳动节',s:'2027-05-01',e:'2027-05-05',est:1},
+  {n:'Dragon Boat Festival',cn:'端午节',s:'2027-06-09',e:'2027-06-11',est:1},
+  {n:'Mid-Autumn Festival',cn:'中秋节',s:'2027-09-15',e:'2027-09-17',est:1},
+  {n:'National Day',cn:'国庆节',s:'2027-10-01',e:'2027-10-07',est:1}
+];
+const KANDY={lat:7.2906,lon:80.6337};
+
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const key=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const toDate=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
+const fmt=(d,o)=>d.toLocaleDateString('en-GB',o);
+
+/* ---------- Clocks + greeting ---------- */
+function tick(){
+  const now=new Date();
+  const t=tz=>now.toLocaleTimeString('en-GB',{timeZone:tz,hour12:false});
+  $('tK').textContent=t('Asia/Colombo');$('tB').textContent=t('Asia/Shanghai');
+  const h=+now.toLocaleTimeString('en-GB',{timeZone:'Asia/Colombo',hour:'2-digit',hour12:false});
+  $('greet').textContent=(h<12?'Good morning':h<18?'Good afternoon':'Good evening')+' - '+fmt(now,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+tick();setInterval(tick,1000);
+
+/* ---------- Links ---------- */
+let links;
+try{links=JSON.parse(localStorage.getItem('indra-links'))}catch(e){}
+if(!Array.isArray(links)||!links.length)links=DEFAULT_LINKS.slice();
+const save=()=>{try{localStorage.setItem('indra-links',JSON.stringify(links))}catch(e){}};
+try{ /* one-time: add any new default links to a list saved earlier */
+  if(localStorage.getItem('indra-seed')!=='2'){
+    DEFAULT_LINKS.forEach(d=>{if(!links.some(l=>l.u===d.u))links.push(d)});
+    localStorage.setItem('indra-seed','2');save();
+  }
+}catch(e){}
+const PAL=[265,172,342,38,205,298];
+const hue=n=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))>>>0;return PAL[h%PAL.length]};
+function renderLinks(anim){
+  $('lc').textContent=links.length+' saved';
+  const box=$('cards');box.innerHTML='';
+  links.forEach((l,i)=>{
+    const cell=document.createElement('div');cell.className='cell';
+    if(anim==='all'||anim===i)cell.style.animation=`fly .9s cubic-bezier(.34,1.56,.64,1) ${anim==='all'?350+i*90:0}ms both`;
+    const a=document.createElement('a');
+    a.className='card';a.style.setProperty('--h',hue(l.n));a.style.setProperty('--d',(i*1.4)+'s');
+    a.href=l.u;a.target='_blank';a.rel='noopener noreferrer';
+    let shown=l.u;try{const u=new URL(l.u);shown=u.host+u.pathname.replace(/\/$/,'')}catch(e){}
+    a.innerHTML='<span class="ico"></span><span class="txt"><strong></strong><em></em></span><span class="arr"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span>';
+    a.querySelector('.ico').textContent=l.n.charAt(0).toUpperCase();
+    a.querySelector('strong').textContent=l.n;
+    a.querySelector('em').textContent=shown;
+    a.addEventListener('pointermove',e=>{
+      const r=a.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+      a.style.setProperty('--ry',((x-.5)*14)+'deg');a.style.setProperty('--rx',((.5-y)*14)+'deg');
+      a.style.setProperty('--mx',x*100+'%');a.style.setProperty('--my',y*100+'%');
+      a.style.setProperty('--px',((x-.5)*10)+'px');a.style.setProperty('--py',((y-.5)*8)+'px');
+    });
+    a.addEventListener('pointerleave',()=>['--rx','--ry','--px','--py'].forEach(v=>a.style.setProperty(v,v[1]==='p'?'0px':'0deg')));
+    a.addEventListener('pointerdown',e=>{
+      const r=a.getBoundingClientRect(),d=Math.max(r.width,r.height)*2,s=document.createElement('span');
+      s.className='rip';s.style.cssText=`width:${d}px;height:${d}px;left:${e.clientX-r.left-d/2}px;top:${e.clientY-r.top-d/2}px`;
+      a.appendChild(s);setTimeout(()=>s.remove(),700);
+    });
+    const rm=document.createElement('button');
+    rm.className='rm';rm.type='button';rm.setAttribute('aria-label','Remove '+l.n);rm.textContent='\u00d7';
+    rm.onclick=()=>{links.splice(i,1);save();renderLinks()};
+    cell.append(a,rm);box.appendChild(cell);
+  });
+}
+$('addf').onsubmit=e=>{
+  e.preventDefault();
+  let n=$('nm').value.trim(),u=$('ur').value.trim();
+  if(!u){$('msg').textContent='Enter a link address to add.';return}
+  if(!/^https?:\/\//i.test(u))u='https://'+u;
+  try{new URL(u)}catch(err){$('msg').textContent='That address is not a valid link. Check it and try again.';return}
+  if(!n)n=new URL(u).hostname;
+  links.push({n,u});save();renderLinks(links.length-1);$('addf').reset();$('msg').textContent='';
+};
+$('reset').onclick=()=>{links=DEFAULT_LINKS.slice();save();renderLinks('all');$('msg').textContent=''};
+renderLinks('all');
+
+/* ---------- Weather ---------- */
+const kind=c=>c===0?'clear':c<=2?'part':c===3?'cloud':(c===45||c===48)?'fog':c>=95?'storm':(c>=51&&c<=67)||(c>=80&&c<=82)?'rain':'cloud';
+const label={clear:'Clear sky',part:'Partly cloudy',cloud:'Overcast',fog:'Foggy',rain:'Rain',storm:'Thunderstorm'};
+const CLOUD='M20 46h26a9 9 0 0 0 1-18 13 13 0 0 0-25-2A10 10 0 0 0 20 46z';
+function icon(k,night){
+  const sun=`<g class="rays" stroke="#ffc861" stroke-width="3" stroke-linecap="round">${[0,45,90,135,180,225,270,315].map(a=>`<line x1="32" y1="6" x2="32" y2="12" transform="rotate(${a} 32 32)"/>`).join('')}</g><circle cx="32" cy="32" r="12" fill="#ffc861"/>`;
+  const moon=`<path d="M40 14a18 18 0 1 0 12 30A16 16 0 0 1 40 14z" fill="#cfd6ff"/>`;
+  const body=night?moon:sun;
+  const cl=(f='#dfe4ff')=>`<g class="cl"><path d="${CLOUD}" fill="${f}"/></g>`;
+  const drops=`<g stroke="#5ee7df" stroke-width="3" stroke-linecap="round" class="dr"><line x1="24" y1="50" x2="22" y2="60"/><line x1="34" y1="50" x2="32" y2="60"/><line x1="44" y1="50" x2="42" y2="60"/></g>`;
+  const m={
+    clear:body,
+    part:`<g transform="translate(-6 -6) scale(.8)">${body}</g>${cl()}`,
+    cloud:cl('#c3caee'),
+    fog:`${cl('#aab2dc')}<g stroke="#aab2dc" stroke-width="3" stroke-linecap="round"><line x1="16" y1="52" x2="48" y2="52"/><line x1="22" y1="58" x2="54" y2="58"/></g>`,
+    rain:`${cl('#a9b3e8')}${drops}`,
+    storm:`${cl('#8d96c9')}<path class="bolt" d="M34 40l-8 12h7l-3 10 11-15h-7z" fill="#ffc861"/>`
+  };
+  return `<svg viewBox="0 0 64 64" aria-hidden="true">${m[k]}</svg>`;
+}
+async function loadWeather(){
+  const q=`https://api.open-meteo.com/v1/forecast?latitude=${KANDY.lat}&longitude=${KANDY.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FColombo&forecast_days=5`;
+  try{
+    const r=await fetch(q);if(!r.ok)throw 0;
+    const d=await r.json(),c=d.current,k=kind(c.weather_code);
+    $('wx').innerHTML=`
+      <div class="now">${icon(k,!c.is_day)}<div><div class="temp">${Math.round(c.temperature_2m)}<sup>&deg;C</sup></div><div class="cond">${label[k]}, feels like ${Math.round(c.apparent_temperature)}&deg;</div></div></div>
+      <div class="stats"><div><b>${c.relative_humidity_2m}%</b>Humidity</div><div><b>${Math.round(c.wind_speed_10m)} km/h</b>Wind</div><div><b>${d.daily.precipitation_probability_max[0]}%</b>Rain chance</div></div>
+      <div class="days">${d.daily.time.map((t,i)=>`<div><b>${i?fmt(toDate(t),{weekday:'short'}):'Today'}</b>${icon(kind(d.daily.weather_code[i]))}${Math.round(d.daily.temperature_2m_max[i])}&deg; / ${Math.round(d.daily.temperature_2m_min[i])}&deg;</div>`).join('')}</div>`;
+    $('wu').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    $('wx').innerHTML=`<p class="skel">Could not load the forecast. Check your internet connection, then try again.</p><button class="pill" id="retry" type="button">Retry</button>`;
+    $('retry').onclick=()=>{$('wx').innerHTML='<p class="skel">Loading forecast...</p>';loadWeather()};
+  }
+}
+loadWeather();setInterval(loadWeather,15*60*1000);
+
+/* ---------- Holiday calendar ---------- */
+const today=new Date();today.setHours(0,0,0,0);
+let vy=today.getFullYear(),vm=today.getMonth();
+$('dow').innerHTML=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div>${d}</div>`).join('');
+const holidayOn=k=>HOLIDAYS.find(h=>k>=h.s&&k<=h.e);
+function renderCal(){
+  $('mt').textContent=fmt(new Date(vy,vm,1),{month:'long',year:'numeric'});
+  const first=new Date(vy,vm,1),lead=(first.getDay()+6)%7,start=new Date(vy,vm,1-lead);
+  let html='';
+  for(let i=0;i<42;i++){
+    const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i),k=key(d),h=holidayOn(k);
+    const cls=['d',d.getMonth()!==vm?'out':'',h?'h':'',h&&h.est?'est':'',k===key(today)?'t':''].join(' ');
+    html+=`<div class="${cls}" style="--k:${i}"${h?` title="${h.n} (${h.cn})${h.est?' - expected':''}"`:''}><span>${d.getDate()}</span>${h&&k===h.s?`<small>${h.cn}</small>`:''}</div>`;
+    if(i===34&&new Date(start.getFullYear(),start.getMonth(),start.getDate()+35).getMonth()!==vm)break;
+  }
+  $('cg').innerHTML=html;
+}
+$('pv').onclick=()=>{vm--;if(vm<0){vm=11;vy--}renderCal()};
+$('nx').onclick=()=>{vm++;if(vm>11){vm=0;vy++}renderCal()};
+renderCal();
+
+/* ---------- Next holiday ---------- */
+function renderNext(){
+  const tk=key(today);
+  const up=HOLIDAYS.filter(h=>h.e>=tk);
+  if(!up.length){$('nextbox').innerHTML='<p class="note">No upcoming holidays are listed. Add the new schedule to the HOLIDAYS list.</p>';return}
+  const h=up[0],ongoing=h.s<=tk;
+  const days=Math.round((toDate(h.s)-today)/864e5);
+  const len=Math.round((toDate(h.e)-toDate(h.s))/864e5)+1;
+  $('nextbox').innerHTML=`
+    <div class="big" id="cnt">0</div>
+    <div class="nm">${ongoing?'days left in':'days until'} ${h.n} <span>${h.cn}</span></div>
+    <p class="note">${fmt(toDate(h.s),{day:'numeric',month:'short'})} to ${fmt(toDate(h.e),{day:'numeric',month:'short',year:'numeric'})} (${len} days). Factories, suppliers and customs offices are usually closed or slow, so plan orders and shipments before it starts.${h.est?' Dates are expected, not yet announced.':''}</p>
+    <ul class="up">${up.slice(1,5).map(x=>`<li><div>${x.n}${x.est?'<em>expected</em>':''}</div><span>${fmt(toDate(x.s),{day:'numeric',month:'short',year:'numeric'})}</span></li>`).join('')}</ul>`;
+  const target=ongoing?Math.round((toDate(h.e)-today)/864e5)+1:days,el=$('cnt'),t0=performance.now();
+  (function step(t){const p=Math.min((t-t0)/1100,1);el.textContent=Math.round(target*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(step)})(t0);
+}
+renderNext();
+
+/* ---------- Mobile tabs + swipe ---------- */
+const order=['links','weather','cal','next'];
+function show(t){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.classList.contains(t)));
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
+let sx=0,sy=0;
+document.querySelector('main').addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+document.querySelector('main').addEventListener('touchend',e=>{
+  if(innerWidth>900)return;
+  const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;
+  const cur=order.findIndex(t=>document.querySelector('.panel.'+t).classList.contains('on'));
+  const n=cur+(dx<0?1:-1);if(n>=0&&n<order.length)show(order[n]);
+},{passive:true});
+</script>
+</body>
+</html>
