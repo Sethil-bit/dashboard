@@ -330,7 +330,7 @@ function renderChips(){
     ch.querySelector('span').textContent=l.n;
     const b=ch.querySelector('button');let t;
     b.onclick=()=>{
-      if(b.classList.contains('arm')){clearTimeout(t);links.splice(i,1);save();renderLinks();return}
+      if(b.classList.contains('arm')){clearTimeout(t);const rm=links.splice(i,1)[0];save();renderLinks();if(rm&&rm.id)sb('?id=eq.'+rm.id,{method:'DELETE'}).catch(()=>{});return}
       b.classList.add('arm');b.textContent='Tap again to delete';
       t=setTimeout(()=>{b.classList.remove('arm');b.textContent='Delete'},3000);
     };
@@ -348,10 +348,37 @@ $('addf').onsubmit=e=>{
   if(!/^https?:\/\//i.test(u))u='https://'+u;
   try{new URL(u)}catch(err){$('msg').textContent='That address is not a valid link. Check it and try again.';return}
   if(!n)n=new URL(u).hostname;
-  links.push({n,u});save();renderLinks(links.length-1);$('addf').reset();$('msg').textContent='';
+  const item={n,u};links.push(item);save();renderLinks(links.length-1);$('addf').reset();$('msg').textContent='';
+  sb('?select=id',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify([toRow(item,links.length-1)])}).then(r=>{item.id=r[0].id;save()}).catch(()=>{});
 };
-$('reset').onclick=()=>{links=DEFAULT_LINKS.slice();save();renderLinks('all');$('msg').textContent=''};
+$('reset').onclick=()=>{links=DEFAULT_LINKS.map(d=>({...d}));save();renderLinks('all');$('msg').textContent='';sbReset()};
+/* ---------- Supabase sync (publishable key only; protected by RLS) ---------- */
+const SB_URL='https://bfyilnggdyiaxfbbrrrx.supabase.co/rest/v1/links';
+const SB_KEY='sb_publishable_uktYUCeSGGcdU-cn992PUg_G68o8dnS';
+async function sb(path,opt={}){
+  const r=await fetch(SB_URL+path,{...opt,headers:{apikey:SB_KEY,'Content-Type':'application/json',...(opt.headers||{})}});
+  if(!r.ok)throw new Error('Supabase '+r.status);
+  return r.status===204?null:r.json();
+}
+const toRow=(l,i)=>({name:l.n,url:l.u,position:i});
+const fromRow=r=>({n:r.name,u:r.url,id:r.id});
+async function sbInsert(list){
+  const rows=await sb('?select=id,name,url',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(list.map(toRow))});
+  return rows.map(fromRow);
+}
+async function sbLoad(){
+  try{
+    const rows=await sb('?select=id,name,url&order=position.asc,id.asc');
+    links=rows.length?rows.map(fromRow):await sbInsert(links); /* empty table: seed from local links */
+    save();renderLinks();
+  }catch(e){console.warn('Supabase unavailable, using local links',e)}
+}
+async function sbReset(){
+  try{await sb('?id=gt.0',{method:'DELETE'});links=await sbInsert(links);save();renderLinks()}
+  catch(e){console.warn('Supabase reset failed',e)}
+}
 renderLinks('all');
+sbLoad();
 
 /* ---------- Weather ---------- */
 const kind=c=>c===0?'clear':c<=2?'part':c===3?'cloud':(c===45||c===48)?'fog':c>=95?'storm':(c>=51&&c<=67)||(c>=80&&c<=82)?'rain':'cloud';
