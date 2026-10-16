@@ -303,7 +303,7 @@ function tick(){
 tick();setInterval(tick,1000);
 
 /* ---------- Links ---------- */
-let links;
+let links;let syncTxt='';let pendingOps=0;
 try{links=JSON.parse(localStorage.getItem('dash-links')||localStorage.getItem('indra-links'))}catch(e){}
 if(!Array.isArray(links)||!links.length)links=DEFAULT_LINKS.slice();
 const save=()=>{try{localStorage.setItem('dash-links',JSON.stringify(links))}catch(e){}};
@@ -326,7 +326,7 @@ function burst(x,y,col){
   }
 }
 function renderLinks(anim){
-  $('lc').textContent=links.length+' saved';
+  $('lc').textContent=links.length+' saved'+syncTxt;
   const box=$('cards');box.innerHTML='';
   links.forEach((l,i)=>{
     const [c,f]=l.c?[l.c,ink(l.c)]:pal(l.n),a=document.createElement('a');
@@ -360,7 +360,7 @@ function renderChips(){
     ch.querySelector('span').textContent=l.n;
     const b=ch.querySelector('button');let t;
     b.onclick=()=>{
-      if(b.classList.contains('arm')){clearTimeout(t);const rm=links.splice(i,1)[0];save();renderLinks();if(rm&&rm.id)sb('?id=eq.'+rm.id,{method:'DELETE'}).catch(()=>{});return}
+      if(b.classList.contains('arm')){clearTimeout(t);const rm=links.splice(i,1)[0];save();renderLinks();if(rm&&rm.id){pendingOps++;sb('?id=eq.'+rm.id,{method:'DELETE'}).then(()=>setSync(' · synced')).catch(syncFail).finally(()=>pendingOps--)}return}
       b.classList.add('arm');b.textContent='Tap again to delete';
       t=setTimeout(()=>{b.classList.remove('arm');b.textContent='Delete'},3000);
     };
@@ -391,8 +391,8 @@ $('addf').onsubmit=e=>{
   if(!/^https?:\/\//i.test(u))u='https://'+u;
   try{new URL(u)}catch(err){$('msg').textContent='That address is not a valid link. Check it and try again.';return}
   if(!n)n=new URL(u).hostname;
-  const item={n,u};if(pick)item.c=pick;links.push(item);save();renderLinks(links.length-1);$('addf').reset();pick='';renderSw();$('msg').textContent='';
-  sb('?select=id',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify([toRow(item,links.length-1)])}).then(r=>{item.id=r[0].id;save()}).catch(()=>{});
+  pendingOps++;const item={n,u,p:true};if(pick)item.c=pick;links.push(item);save();renderLinks(links.length-1);$('addf').reset();pick='';renderSw();$('msg').textContent='';
+  sb('?select=id',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify([toRow(item,links.length-1)])}).then(r=>{item.id=r[0].id;delete item.p;save();setSync(' · synced')}).catch(syncFail).finally(()=>pendingOps--);
 };
 $('reset').onclick=()=>{links=DEFAULT_LINKS.map(d=>({...d}));save();renderLinks('all');$('msg').textContent='';sbReset()};
 /* ---------- Supabase: per-user accounts + synced links (publishable key only; RLS keeps each user's rows private) ---------- */
@@ -419,30 +419,46 @@ async function token(){
 async function sb(path,opt={}){
   const r=await fetch(SB+'/rest/v1/links'+path,{...opt,headers:{apikey:SB_KEY,Authorization:'Bearer '+await token(),'Content-Type':'application/json',...(opt.headers||{})}});
   if(r.status===401){saveSess(null);throw authErr()}
-  if(!r.ok)throw new Error('Supabase '+r.status);
+  if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('Supabase '+r.status+(t?': '+t.slice(0,140):''))}
   return r.status===204?null:r.json();
 }
 const toRow=(l,i)=>({name:l.n,url:l.u,position:i,color:l.c||null});
 const fromRow=r=>({n:r.name,u:r.url,id:r.id,c:r.color||undefined});
-async function sbInsert(list){
-  const rows=await sb('?select=id,name,url,color',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(list.map(toRow))});
+async function sbInsert(list,start=0){
+  const rows=await sb('?select=id,name,url,color',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(list.map((l,i)=>toRow(l,start+i)))});
   return rows.map(fromRow);
 }
+function setSync(t){syncTxt=t;$('lc').textContent=links.length+' saved'+syncTxt}
+function syncFail(e){
+  if(e&&e.auth){showGate('Please sign in again.');return}
+  console.warn('Sync problem',e);setSync(' · not synced');
+  $('msg').textContent='Could not sync with the server ('+((e&&e.message)||'error')+'). Saved on this device only.';
+}
+const sig=a=>JSON.stringify(a.map(l=>[l.id,l.n,l.u,l.c]));
 async function sbLoad(){
+  if(pendingOps>0||!sess)return;
   try{
-    $('who').textContent=sess?sess.email:'';
-    const rows=await sb('?select=id,name,url,color&order=position.asc,id.asc');
-    links=rows.length?rows.map(fromRow):await sbInsert(links); /* new account: start from this browser's links */
-    save();renderLinks();
-  }catch(e){
-    if(e.auth)showGate('Please sign in again.');
-    else console.warn('Supabase unavailable, using local links',e);
-  }
+    $('who').textContent=sess.email||'';
+    const rows=(await sb('?select=id,name,url,color&order=position.asc,id.asc')).map(fromRow);
+    let merged=rows;
+    if(!rows.length)merged=await sbInsert(links);                 /* new account: start from this browser's links */
+    else{
+      const pend=links.filter(l=>l.p&&!rows.some(r=>r.u===l.u));    /* links added here that never reached the server */
+      if(pend.length)merged=rows.concat(await sbInsert(pend,rows.length));
+    }
+    if(sig(merged)!==sig(links)){links=merged;save();renderLinks()}
+    else{links=merged;save()}
+    setSync(' · synced');
+  }catch(e){syncFail(e)}
 }
 async function sbReset(){
-  try{await sb('?id=gt.0',{method:'DELETE'});links=await sbInsert(links);save();renderLinks()}
-  catch(e){if(e.auth)showGate('Please sign in again.');else console.warn('Supabase reset failed',e)}
+  pendingOps++;
+  try{await sb('?id=gt.0',{method:'DELETE'});links=await sbInsert(links);save();renderLinks();setSync(' · synced')}
+  catch(e){syncFail(e)}
+  finally{pendingOps--}
 }
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sbLoad()});
+setInterval(()=>{if(!document.hidden)sbLoad()},30000);
 /* sign-in screen */
 const gate=$('gate');
 function showGate(msg){gate.hidden=false;$('amsg').textContent=msg||''}
