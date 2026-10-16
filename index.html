@@ -77,6 +77,14 @@ input:focus{outline:none;border-color:var(--ink)}
 .pill:hover{transform:translateY(-2px)}.pill:active{transform:scale(.94)}
 .ghost{background:none;border:2px solid var(--soft);color:var(--mute);padding:8px 14px;border-radius:14px;font:600 13px var(--body);cursor:pointer}
 .msg{font-size:12.5px;color:var(--coral);margin-top:6px}.msg:empty{display:none}
+.sheet h3 small{font:500 12px var(--body);color:var(--mute);margin-left:8px}
+/* sign-in gate */
+.gate{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:20px;background:var(--bg)}
+.gate[hidden]{display:none}
+.gcard{width:min(380px,100%);background:var(--panel);border-radius:28px;padding:28px 24px;display:flex;flex-direction:column;gap:10px;box-shadow:0 34px 70px -24px var(--shadow),0 0 0 1px var(--soft)}
+.gcard h2{font:800 28px var(--display)}
+.gcard .sub{color:var(--mute);font-size:14px;margin-bottom:6px}
+.gcard input{flex:none}
 /* weather */
 .weather{position:relative;color:#fff;background:var(--sky,linear-gradient(160deg,#3D8BFF,#8FD0FF));transition:background .8s}
 .weather>:not(.fx){position:relative;z-index:1}
@@ -180,13 +188,14 @@ footer{margin-top:10px;color:var(--mute);font-size:11px;text-align:center;flex:n
       <h2 id="hl">Launchpad <span class="hr"><small id="lc"></small><button class="sw" id="sw" type="button" role="switch" aria-checked="false"><i></i>Edit</button></span></h2>
       <div class="cards" id="cards"></div>
       <div class="sheet" id="sheet" hidden>
-        <h3>Manage links</h3>
+        <h3>Manage links<small id="who"></small></h3>
         <div class="chips" id="chips"></div>
         <form class="add" id="addf" autocomplete="off">
           <input id="nm" placeholder="Name" aria-label="Link name" maxlength="30">
           <input id="ur" placeholder="https://..." aria-label="Link address" inputmode="url">
           <button class="pill" type="submit">Add link</button>
           <button class="ghost" type="button" id="reset">Restore defaults</button>
+          <button class="ghost" type="button" id="signout">Sign out</button>
         </form>
         <p class="msg" id="msg" role="status"></p>
       </div>
@@ -217,6 +226,17 @@ footer{margin-top:10px;color:var(--mute);font-size:11px;text-align:center;flex:n
     <button data-t="cal" type="button">Calendar</button>
     <button data-t="next" type="button">Next</button>
   </nav>
+</div>
+<div class="gate" id="gate">
+  <form class="gcard" id="authf">
+    <h2>Dashboard</h2>
+    <p class="sub">Sign in to see your own links.</p>
+    <input id="em" type="email" placeholder="Email" autocomplete="email" required>
+    <input id="pw" type="password" placeholder="Password (min 6 characters)" autocomplete="current-password" minlength="6" required>
+    <button class="pill" type="submit">Sign in</button>
+    <button class="ghost" type="button" id="signup">Create account</button>
+    <p class="msg" id="amsg" role="status"></p>
+  </form>
 </div>
 <script>
 /* ---------- Data you can edit ---------- */
@@ -352,11 +372,30 @@ $('addf').onsubmit=e=>{
   sb('?select=id',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify([toRow(item,links.length-1)])}).then(r=>{item.id=r[0].id;save()}).catch(()=>{});
 };
 $('reset').onclick=()=>{links=DEFAULT_LINKS.map(d=>({...d}));save();renderLinks('all');$('msg').textContent='';sbReset()};
-/* ---------- Supabase sync (publishable key only; protected by RLS) ---------- */
-const SB_URL='https://bfyilnggdyiaxfbbrrrx.supabase.co/rest/v1/links';
+/* ---------- Supabase: per-user accounts + synced links (publishable key only; RLS keeps each user's rows private) ---------- */
+const SB='https://bfyilnggdyiaxfbbrrrx.supabase.co';
 const SB_KEY='sb_publishable_uktYUCeSGGcdU-cn992PUg_G68o8dnS';
+let sess=null;try{sess=JSON.parse(localStorage.getItem('dash-auth'))}catch(e){}
+const saveSess=v=>{sess=v;try{v?localStorage.setItem('dash-auth',JSON.stringify(v)):localStorage.removeItem('dash-auth')}catch(e){}};
+const mkSess=d=>({at:d.access_token,rt:d.refresh_token,exp:Date.now()+(d.expires_in||3600)*1000-60000,email:(d.user&&d.user.email)||(sess&&sess.email)||''});
+async function auth(path,body){
+  const r=await fetch(SB+'/auth/v1/'+path,{method:'POST',headers:{apikey:SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.msg||d.error_description||d.message||('Error '+r.status));
+  return d;
+}
+const authErr=()=>{const e=new Error('signed out');e.auth=true;return e};
+async function token(){
+  if(!sess)throw authErr();
+  if(Date.now()>sess.exp){
+    try{saveSess(mkSess(await auth('token?grant_type=refresh_token',{refresh_token:sess.rt})))}
+    catch(e){saveSess(null);throw authErr()}
+  }
+  return sess.at;
+}
 async function sb(path,opt={}){
-  const r=await fetch(SB_URL+path,{...opt,headers:{apikey:SB_KEY,'Content-Type':'application/json',...(opt.headers||{})}});
+  const r=await fetch(SB+'/rest/v1/links'+path,{...opt,headers:{apikey:SB_KEY,Authorization:'Bearer '+await token(),'Content-Type':'application/json',...(opt.headers||{})}});
+  if(r.status===401){saveSess(null);throw authErr()}
   if(!r.ok)throw new Error('Supabase '+r.status);
   return r.status===204?null:r.json();
 }
@@ -368,17 +407,43 @@ async function sbInsert(list){
 }
 async function sbLoad(){
   try{
+    $('who').textContent=sess?sess.email:'';
     const rows=await sb('?select=id,name,url&order=position.asc,id.asc');
-    links=rows.length?rows.map(fromRow):await sbInsert(links); /* empty table: seed from local links */
+    links=rows.length?rows.map(fromRow):await sbInsert(links); /* new account: start from this browser's links */
     save();renderLinks();
-  }catch(e){console.warn('Supabase unavailable, using local links',e)}
+  }catch(e){
+    if(e.auth)showGate('Please sign in again.');
+    else console.warn('Supabase unavailable, using local links',e);
+  }
 }
 async function sbReset(){
   try{await sb('?id=gt.0',{method:'DELETE'});links=await sbInsert(links);save();renderLinks()}
-  catch(e){console.warn('Supabase reset failed',e)}
+  catch(e){if(e.auth)showGate('Please sign in again.');else console.warn('Supabase reset failed',e)}
 }
+/* sign-in screen */
+const gate=$('gate');
+function showGate(msg){gate.hidden=false;$('amsg').textContent=msg||''}
+async function doAuth(kind){
+  const email=$('em').value.trim(),password=$('pw').value;
+  if(!email||password.length<6){$('amsg').textContent='Enter your email and a password of at least 6 characters.';return}
+  $('amsg').textContent='Please wait...';
+  try{
+    const d=await auth(kind==='up'?'signup':'token?grant_type=password',{email,password});
+    if(!d.access_token){$('amsg').textContent='Check your email to confirm your account, then sign in.';return}
+    saveSess(mkSess(d));gate.hidden=true;$('pw').value='';$('amsg').textContent='';sbLoad();
+  }catch(e){$('amsg').textContent=e.message}
+}
+$('authf').onsubmit=e=>{e.preventDefault();doAuth('in')};
+$('signup').onclick=()=>doAuth('up');
+$('signout').onclick=()=>{
+  saveSess(null);
+  try{localStorage.removeItem('dash-links');localStorage.removeItem('dash-seed')}catch(e){}
+  links=DEFAULT_LINKS.map(d=>({...d}));renderLinks('all');
+  $('sw').setAttribute('aria-checked','false');$('sheet').hidden=true;$('who').textContent='';
+  showGate();
+};
 renderLinks('all');
-sbLoad();
+if(sess){gate.hidden=true;sbLoad()}
 
 /* ---------- Weather ---------- */
 const kind=c=>c===0?'clear':c<=2?'part':c===3?'cloud':(c===45||c===48)?'fog':c>=95?'storm':(c>=51&&c<=67)||(c>=80&&c<=82)?'rain':'cloud';
