@@ -77,6 +77,14 @@ input:focus{outline:none;border-color:var(--ink)}
 .pill:hover{transform:translateY(-2px)}.pill:active{transform:scale(.94)}
 .ghost{background:none;border:2px solid var(--soft);color:var(--mute);padding:8px 14px;border-radius:14px;font:600 13px var(--body);cursor:pointer}
 .msg{font-size:12.5px;color:var(--coral);margin-top:6px}.msg:empty{display:none}
+.pickrow{flex:1 1 100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pickrow .lbl{font-size:12.5px;color:var(--mute);font-weight:600}
+.sws{display:flex;gap:8px;align-items:center}
+.swt,#cc{flex:none;width:26px;height:26px;border-radius:50%;border:0;padding:0;cursor:pointer;box-shadow:0 0 0 2px var(--panel);transition:transform .25s var(--spring),box-shadow .2s}
+.swt:hover,#cc:hover{transform:scale(1.15)}
+.swt.on,#cc.on{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--ink)}
+#cc{background:none;overflow:hidden;min-width:0}
+#cc::-webkit-color-swatch-wrapper{padding:0}#cc::-webkit-color-swatch{border:0;border-radius:50%}#cc::-moz-color-swatch{border:0;border-radius:50%}
 .sheet h3 small{font:500 12px var(--body);color:var(--mute);margin-left:8px}
 /* sign-in gate */
 .gate{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:20px;background:var(--bg)}
@@ -193,6 +201,7 @@ footer{margin-top:10px;color:var(--mute);font-size:11px;text-align:center;flex:n
         <form class="add" id="addf" autocomplete="off">
           <input id="nm" placeholder="Name" aria-label="Link name" maxlength="30">
           <input id="ur" placeholder="https://..." aria-label="Link address" inputmode="url">
+          <div class="pickrow"><span class="lbl">Colour</span><div class="sws" id="sws"></div><input type="color" id="cc" value="#3B5BFF" aria-label="Custom colour" title="Custom colour"></div>
           <button class="pill" type="submit">Add link</button>
           <button class="ghost" type="button" id="reset">Restore defaults</button>
           <button class="ghost" type="button" id="signout">Sign out</button>
@@ -305,6 +314,7 @@ try{ /* one-time: add any new default links to a list saved earlier */
   }
 }catch(e){}
 const PAL=[['#3B5BFF','#fff'],['#FF5B4A','#fff'],['#FFC93C','#0E1A3A'],['#19C99A','#06281F'],['#8A5BFF','#fff'],['#FF7AB6','#3A0F24']];
+const ink=h=>{const m=/^#?([0-9a-f]{6})$/i.exec(h);if(!m)return'#fff';const n=parseInt(m[1],16),y=(0.299*(n>>16)+0.587*((n>>8)&255)+0.114*(n&255));return y>150?'#0E1A3A':'#fff'};
 const pal=n=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))>>>0;return PAL[h%PAL.length]};
 function burst(x,y,col){
   if(calm)return;
@@ -319,7 +329,7 @@ function renderLinks(anim){
   $('lc').textContent=links.length+' saved';
   const box=$('cards');box.innerHTML='';
   links.forEach((l,i)=>{
-    const [c,f]=pal(l.n),a=document.createElement('a');
+    const [c,f]=l.c?[l.c,ink(l.c)]:pal(l.n),a=document.createElement('a');
     a.className='tile';a.style.setProperty('--c',c);a.style.setProperty('--f',f);a.dataset.l=l.n.charAt(0).toUpperCase();
     if(anim==='all'||anim===i)a.style.animation=`drop .9s var(--spring) ${anim==='all'?300+i*110:0}ms backwards`;
     a.href=l.u;a.target='_blank';a.rel='noopener noreferrer';
@@ -345,7 +355,7 @@ function renderLinks(anim){
 function renderChips(){
   const wrap=$('chips');wrap.innerHTML='';
   links.forEach((l,i)=>{
-    const ch=document.createElement('div');ch.className='chip';ch.style.setProperty('--c',pal(l.n)[0]);
+    const ch=document.createElement('div');ch.className='chip';ch.style.setProperty('--c',l.c||pal(l.n)[0]);
     ch.innerHTML='<b></b><span></span><button type="button">Delete</button>';
     ch.querySelector('span').textContent=l.n;
     const b=ch.querySelector('button');let t;
@@ -361,6 +371,19 @@ $('sw').onclick=()=>{
   const on=$('sw').getAttribute('aria-checked')!=='true';
   $('sw').setAttribute('aria-checked',on);$('sheet').hidden=!on;$('msg').textContent='';
 };
+let pick='';
+const sameC=(a,b)=>a.toLowerCase()===b.toLowerCase();
+function renderSw(){
+  const w=$('sws');w.innerHTML='';
+  PAL.forEach(([c])=>{
+    const b=document.createElement('button');b.type='button';b.className='swt'+(pick&&sameC(pick,c)?' on':'');
+    b.style.background=c;b.setAttribute('aria-label','Colour '+c);
+    b.onclick=()=>{pick=pick&&sameC(pick,c)?'':c;renderSw()};w.appendChild(b);
+  });
+  $('cc').classList.toggle('on',!!pick&&!PAL.some(x=>sameC(x[0],pick)));
+}
+$('cc').oninput=()=>{pick=$('cc').value;renderSw()};
+renderSw();
 $('addf').onsubmit=e=>{
   e.preventDefault();
   let n=$('nm').value.trim(),u=$('ur').value.trim();
@@ -368,7 +391,7 @@ $('addf').onsubmit=e=>{
   if(!/^https?:\/\//i.test(u))u='https://'+u;
   try{new URL(u)}catch(err){$('msg').textContent='That address is not a valid link. Check it and try again.';return}
   if(!n)n=new URL(u).hostname;
-  const item={n,u};links.push(item);save();renderLinks(links.length-1);$('addf').reset();$('msg').textContent='';
+  const item={n,u};if(pick)item.c=pick;links.push(item);save();renderLinks(links.length-1);$('addf').reset();pick='';renderSw();$('msg').textContent='';
   sb('?select=id',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify([toRow(item,links.length-1)])}).then(r=>{item.id=r[0].id;save()}).catch(()=>{});
 };
 $('reset').onclick=()=>{links=DEFAULT_LINKS.map(d=>({...d}));save();renderLinks('all');$('msg').textContent='';sbReset()};
@@ -399,16 +422,16 @@ async function sb(path,opt={}){
   if(!r.ok)throw new Error('Supabase '+r.status);
   return r.status===204?null:r.json();
 }
-const toRow=(l,i)=>({name:l.n,url:l.u,position:i});
-const fromRow=r=>({n:r.name,u:r.url,id:r.id});
+const toRow=(l,i)=>({name:l.n,url:l.u,position:i,color:l.c||null});
+const fromRow=r=>({n:r.name,u:r.url,id:r.id,c:r.color||undefined});
 async function sbInsert(list){
-  const rows=await sb('?select=id,name,url',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(list.map(toRow))});
+  const rows=await sb('?select=id,name,url,color',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(list.map(toRow))});
   return rows.map(fromRow);
 }
 async function sbLoad(){
   try{
     $('who').textContent=sess?sess.email:'';
-    const rows=await sb('?select=id,name,url&order=position.asc,id.asc');
+    const rows=await sb('?select=id,name,url,color&order=position.asc,id.asc');
     links=rows.length?rows.map(fromRow):await sbInsert(links); /* new account: start from this browser's links */
     save();renderLinks();
   }catch(e){
